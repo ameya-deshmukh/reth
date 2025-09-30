@@ -66,12 +66,19 @@ pub trait EthChainSpec: Send + Sync + Unpin + Debug {
 
     /// See [`calc_next_block_base_fee`].
     fn next_block_base_fee(&self, parent: &Self::Header, target_timestamp: u64) -> Option<u64> {
-        Some(calc_next_block_base_fee(
-            parent.gas_used(),
-            parent.gas_limit(),
-            parent.base_fee_per_gas()?,
-            self.base_fee_params_at_timestamp(target_timestamp),
-        ))
+        #[cfg(feature = "zero-gas")]
+        {
+            Some(0)
+        }
+        #[cfg(not(feature = "zero-gas"))]
+        {
+            Some(calc_next_block_base_fee(
+                parent.gas_used(),
+                parent.gas_limit(),
+                parent.base_fee_per_gas()?,
+                self.base_fee_params_at_timestamp(target_timestamp),
+            ))
+        }
     }
 }
 
