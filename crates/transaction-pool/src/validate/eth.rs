@@ -379,12 +379,12 @@ where
                 InvalidTransactionError::TipAboveFeeCap.into(),
             ))
         }
+
+        // determine whether the transaction should be treated as local
+        let is_local = self.local_transactions_config.is_local(origin, transaction.sender_ref());
+        
         #[cfg(not(feature = "zero-gas"))]
         {
-            // determine whether the transaction should be treated as local
-            let is_local =
-                self.local_transactions_config.is_local(origin, transaction.sender_ref());
-
             // Ensure max possible transaction fee doesn't exceed configured transaction fee cap.
             // Only for transactions locally submitted for acceptance into the pool.
             if is_local {
