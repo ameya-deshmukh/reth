@@ -129,7 +129,7 @@ min-trace-logs = [
 
 zero-gas = [
     "reth-transaction-pool/zero-gas",
-    "reth-node-ethereum/zero-gas"
+    "reth-node-ethereum/zero-gas",
 ]
 
 [[bin]]
