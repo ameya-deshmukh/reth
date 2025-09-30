@@ -534,6 +534,9 @@ pub enum RpcInvalidTransactionError {
         /// Current balance of transaction sender.
         balance: U256,
     },
+    /// Value transfers are not allowed in zero-gas mode
+    #[error("value transfers not allowed in zero-gas mode")]
+    ValueTransferInZeroGas,
     /// This is similar to [`Self::InsufficientFunds`] but with a different error message and
     /// exists for compatibility reasons.
     ///
@@ -996,6 +999,9 @@ impl From<InvalidPoolTransactionError> for RpcPoolError {
                 Self::Invalid(RpcInvalidTransactionError::PriorityFeeBelowMinimum {
                     minimum_priority_fee,
                 })
+            }
+            InvalidPoolTransactionError::ValueTransferInZeroGas => {
+                Self::Invalid(RpcInvalidTransactionError::ValueTransferInZeroGas)
             }
         }
     }

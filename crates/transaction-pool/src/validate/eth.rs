@@ -380,9 +380,17 @@ where
             ))
         }
 
+        #[cfg(feature = "zero-gas")]
+        if transaction.value() > U256::ZERO {
+            return Err(TransactionValidationOutcome::Invalid(
+                transaction,
+                InvalidPoolTransactionError::ValueTransferInZeroGas,
+            ))
+        }
+
         // determine whether the transaction should be treated as local
         let is_local = self.local_transactions_config.is_local(origin, transaction.sender_ref());
-        
+
         #[cfg(not(feature = "zero-gas"))]
         {
             // Ensure max possible transaction fee doesn't exceed configured transaction fee cap.
