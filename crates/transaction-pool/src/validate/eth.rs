@@ -372,13 +372,13 @@ where
         }
 
         // Ensure max_priority_fee_per_gas (if EIP1559) is less than max_fee_per_gas if any.
+        #[cfg(not(feature = "zero-gas"))]
         if transaction.max_priority_fee_per_gas() > Some(transaction.max_fee_per_gas()) {
             return Err(TransactionValidationOutcome::Invalid(
                 transaction,
                 InvalidTransactionError::TipAboveFeeCap.into(),
             ))
         }
-
         // determine whether the transaction should be treated as local
         let is_local = self.local_transactions_config.is_local(origin, transaction.sender_ref());
 

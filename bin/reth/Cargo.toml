@@ -127,6 +127,11 @@ min-trace-logs = [
     "reth-ethereum-cli/min-trace-logs",
 ]
 
+zero-gas = [
+    "reth-transaction-pool/zero-gas",
+    "reth-node-ethereum/zero-gas"
+]
+
 [[bin]]
 name = "reth"
 path = "src/main.rs"
