@@ -13,6 +13,7 @@ use crate::{
     LocalTransactionConfig, TransactionValidationOutcome, TransactionValidationTaskExecutor,
     TransactionValidator,
 };
+use alloy_primitives::U256;
 
 use alloy_consensus::{
     constants::{
