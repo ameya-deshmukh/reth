@@ -381,49 +381,50 @@ where
         }
         #[cfg(not(feature = "zero-gas"))]
         {
-        // determine whether the transaction should be treated as local
-        let is_local = self.local_transactions_config.is_local(origin, transaction.sender_ref());
+            // determine whether the transaction should be treated as local
+            let is_local =
+                self.local_transactions_config.is_local(origin, transaction.sender_ref());
 
-        // Ensure max possible transaction fee doesn't exceed configured transaction fee cap.
-        // Only for transactions locally submitted for acceptance into the pool.
-        if is_local {
-            match self.tx_fee_cap {
-                Some(0) | None => {} // Skip if cap is 0 or None
-                Some(tx_fee_cap_wei) => {
-                    // max possible tx fee is (gas_price * gas_limit)
-                    // (if EIP1559) max possible tx fee is (max_fee_per_gas * gas_limit)
-                    let gas_price = transaction.max_fee_per_gas();
-                    let max_tx_fee_wei = gas_price.saturating_mul(transaction.gas_limit() as u128);
-                    if max_tx_fee_wei > tx_fee_cap_wei {
-                        return Err(TransactionValidationOutcome::Invalid(
-                            transaction,
-                            InvalidPoolTransactionError::ExceedsFeeCap {
-                                max_tx_fee_wei,
-                                tx_fee_cap_wei,
-                            },
-                        ))
+            // Ensure max possible transaction fee doesn't exceed configured transaction fee cap.
+            // Only for transactions locally submitted for acceptance into the pool.
+            if is_local {
+                match self.tx_fee_cap {
+                    Some(0) | None => {} // Skip if cap is 0 or None
+                    Some(tx_fee_cap_wei) => {
+                        // max possible tx fee is (gas_price * gas_limit)
+                        // (if EIP1559) max possible tx fee is (max_fee_per_gas * gas_limit)
+                        let gas_price = transaction.max_fee_per_gas();
+                        let max_tx_fee_wei =
+                            gas_price.saturating_mul(transaction.gas_limit() as u128);
+                        if max_tx_fee_wei > tx_fee_cap_wei {
+                            return Err(TransactionValidationOutcome::Invalid(
+                                transaction,
+                                InvalidPoolTransactionError::ExceedsFeeCap {
+                                    max_tx_fee_wei,
+                                    tx_fee_cap_wei,
+                                },
+                            ))
+                        }
                     }
                 }
             }
-        }
 
-        // Drop non-local transactions with a fee lower than the configured fee for acceptance into
-        // the pool.
-        if !is_local &&
-            transaction.is_dynamic_fee() &&
-            transaction.max_priority_fee_per_gas() < self.minimum_priority_fee
-        {
-            return Err(TransactionValidationOutcome::Invalid(
-                transaction,
-                InvalidPoolTransactionError::PriorityFeeBelowMinimum {
-                    minimum_priority_fee: self
-                        .minimum_priority_fee
-                        .expect("minimum priority fee is expected inside if statement"),
-                },
-            ))
+            // Drop non-local transactions with a fee lower than the configured fee for acceptance
+            // into the pool.
+            if !is_local &&
+                transaction.is_dynamic_fee() &&
+                transaction.max_priority_fee_per_gas() < self.minimum_priority_fee
+            {
+                return Err(TransactionValidationOutcome::Invalid(
+                    transaction,
+                    InvalidPoolTransactionError::PriorityFeeBelowMinimum {
+                        minimum_priority_fee: self
+                            .minimum_priority_fee
+                            .expect("minimum priority fee is expected inside if statement"),
+                    },
+                ))
+            }
         }
-    }
-    
 
         // Checks for chainid
         if let Some(chain_id) = transaction.chain_id() {
@@ -623,14 +624,16 @@ where
         transaction: &Tx,
         sender: &Account,
     ) -> Result<(), InvalidPoolTransactionError> {
-        let cost = transaction.cost();
-
-        if !self.disable_balance_check && cost > &sender.balance {
-            let expected = *cost;
-            return Err(InvalidTransactionError::InsufficientFunds(
-                GotExpected { got: sender.balance, expected }.into(),
-            )
-            .into())
+        #[cfg(not(feature = "zero-gas"))]
+        {
+            let cost = transaction.cost();
+            if !self.disable_balance_check && cost > &sender.balance {
+                let expected = *cost;
+                return Err(InvalidTransactionError::InsufficientFunds(
+                    GotExpected { got: sender.balance, expected }.into(),
+                )
+                .into())
+            }
         }
         Ok(())
     }
