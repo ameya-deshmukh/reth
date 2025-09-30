@@ -379,6 +379,8 @@ where
                 InvalidTransactionError::TipAboveFeeCap.into(),
             ))
         }
+        #[cfg(not(feature = "zero-gas"))]
+        {
         // determine whether the transaction should be treated as local
         let is_local = self.local_transactions_config.is_local(origin, transaction.sender_ref());
 
@@ -420,6 +422,8 @@ where
                 },
             ))
         }
+    }
+    
 
         // Checks for chainid
         if let Some(chain_id) = transaction.chain_id() {
