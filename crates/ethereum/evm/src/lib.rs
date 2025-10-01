@@ -377,7 +377,7 @@ where
 }
 
 #[cfg(feature = "zero-gas")]
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ZeroGasInspector;
 
 #[cfg(feature = "zero-gas")]
@@ -406,7 +406,80 @@ where
         }
         None // Continue normal execution
     }
+
+    fn create(
+        &mut self,
+        context: &mut CTX,
+        inputs: &mut CreateInputs,
+    ) -> Option<CreateOutcome> {
+        // Check if create has value > 0
+            if inputs.value > U256::ZERO {
+                // Return error for value transfers
+                return Some(CreateOutcome {
+                    result: InterpreterResult {
+                        result: InstructionResult::Revert,
+                        output: "value transfers not allowed in zero-gas mode".into(),
+                        gas: Gas::new(inputs.gas_limit), // zero gas consumed
+                    },
+                    address: None,
+                });
+            }
+        None // Continue normal execution
+    }
 }
+
+#[cfg(feature = "zero-gas")]
+#[derive(Debug)]
+pub struct CombinedZeroGasInspector<I> {
+    zero_gas: ZeroGasInspector,
+    inner: I,
+}
+
+#[cfg(feature = "zero-gas")]
+impl<I> CombinedZeroGasInspector<I> {
+    pub fn new(inner: I) -> Self {
+        Self {
+            zero_gas: ZeroGasInspector::default(),
+            inner,
+        }
+    }
+}
+
+#[cfg(feature = "zero-gas")]
+impl<CTX, I> Inspector<CTX> for CombinedZeroGasInspector<I>
+where 
+    CTX: ContextTr,
+    I: Inspector<CTX>,
+{
+    fn call(
+        &mut self,
+        context: &mut CTX,
+        inputs: &mut CallInputs,
+    ) -> Option<CallOutcome> {
+        // First check zero gas price restriction
+        if let Some(outcome) = self.zero_gas.call(context, inputs) {
+            return Some(outcome);
+        }
+        
+        // Then delegate to inner inspector
+        self.inner.call(context, inputs)
+    }
+
+    fn create(
+        &mut self,
+        context: &mut CTX,
+        inputs: &mut CreateInputs,
+    ) -> Option<CreateOutcome> {
+        // First check zero gas price restriction
+        if let Some(outcome) = self.zero_gas.create(context, inputs) {
+            return Some(outcome);
+        }
+        
+        // Then delegate to inner inspector
+        self.inner.create(context, inputs)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
