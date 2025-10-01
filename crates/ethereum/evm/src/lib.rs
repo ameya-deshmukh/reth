@@ -50,6 +50,13 @@ use alloy_evm::eth::spec::EthExecutorSpec;
 pub use config::{revm_spec, revm_spec_by_timestamp_and_block_number};
 use reth_ethereum_forks::{EthereumHardfork, Hardforks};
 
+#[cfg(feature = "zero-gas")]
+use revm::{
+    interpreter::{CallInputs, CallOutcome, CreateInputs, CreateOutcome, InterpreterResult, InstructionResult, Interpreter, Gas},
+    inspector::Inspector,
+    context_interface::ContextTr, 
+};
+
 /// Helper type with backwards compatible methods to obtain Ethereum executor
 /// providers.
 #[doc(hidden)]
@@ -366,6 +373,38 @@ where
             let signer = tx.try_recover().map_err(AnyError::new)?;
             Ok::<_, AnyError>(tx.with_signer(signer))
         })
+    }
+}
+
+#[cfg(feature = "zero-gas")]
+#[derive(Default)]
+pub struct ZeroGasInspector;
+
+#[cfg(feature = "zero-gas")]
+impl<CTX> Inspector<CTX> for ZeroGasInspector
+where 
+    CTX: ContextTr,
+{
+    fn call(
+        &mut self,
+        context: &mut CTX,
+        inputs: &mut CallInputs,
+    ) -> Option<CallOutcome> {
+        // Check if call has value > 0
+        if let Some(transfer_value) = inputs.transfer_value() {
+            if transfer_value > U256::ZERO {
+            // Return error for value transfers
+            return Some(CallOutcome {
+                result: InterpreterResult {
+                    result: InstructionResult::Revert,
+                    output: "value transfers not allowed in zero-gas mode".into(),
+                    gas: Gas::new(inputs.gas_limit), // zero gas consumed
+                },
+                    memory_offset: inputs.return_memory_offset.clone(),
+                });
+            }
+        }
+        None // Continue normal execution
     }
 }
 
