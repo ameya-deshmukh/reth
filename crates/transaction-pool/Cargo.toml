@@ -120,6 +120,8 @@ arbitrary = [
     "revm-primitives/arbitrary",
 ]
 
+zero-gas = []
+
 [[bench]]
 name = "truncate"
 required-features = ["test-utils", "arbitrary"]

@@ -50,6 +50,13 @@ use alloy_evm::eth::spec::EthExecutorSpec;
 pub use config::{revm_spec, revm_spec_by_timestamp_and_block_number};
 use reth_ethereum_forks::{EthereumHardfork, Hardforks};
 
+#[cfg(feature = "zero-gas")]
+use revm::{
+    interpreter::{CallInputs, CallOutcome, CreateInputs, CreateOutcome, InterpreterResult, InstructionResult, Interpreter, Gas},
+    inspector::Inspector,
+    context_interface::ContextTr, 
+};
+
 /// Helper type with backwards compatible methods to obtain Ethereum executor
 /// providers.
 #[doc(hidden)]
@@ -371,6 +378,111 @@ where
         })
     }
 }
+
+#[cfg(feature = "zero-gas")]
+#[derive(Default, Debug)]
+pub struct ZeroGasInspector;
+
+#[cfg(feature = "zero-gas")]
+impl<CTX> Inspector<CTX> for ZeroGasInspector
+where 
+    CTX: ContextTr,
+{
+    fn call(
+        &mut self,
+        context: &mut CTX,
+        inputs: &mut CallInputs,
+    ) -> Option<CallOutcome> {
+        // Check if call has value > 0
+        if let Some(transfer_value) = inputs.transfer_value() {
+            if transfer_value > U256::ZERO {
+            // Return error for value transfers
+            return Some(CallOutcome {
+                result: InterpreterResult {
+                    result: InstructionResult::Revert,
+                    output: "value transfers not allowed in zero-gas mode".into(),
+                    gas: Gas::new(inputs.gas_limit), // zero gas consumed
+                },
+                    memory_offset: inputs.return_memory_offset.clone(),
+                });
+            }
+        }
+        None // Continue normal execution
+    }
+
+    fn create(
+        &mut self,
+        context: &mut CTX,
+        inputs: &mut CreateInputs,
+    ) -> Option<CreateOutcome> {
+        // Check if create has value > 0
+            if inputs.value > U256::ZERO {
+                // Return error for value transfers
+                return Some(CreateOutcome {
+                    result: InterpreterResult {
+                        result: InstructionResult::Revert,
+                        output: "value transfers not allowed in zero-gas mode".into(),
+                        gas: Gas::new(inputs.gas_limit), // zero gas consumed
+                    },
+                    address: None,
+                });
+            }
+        None // Continue normal execution
+    }
+}
+
+#[cfg(feature = "zero-gas")]
+#[derive(Debug)]
+pub struct CombinedZeroGasInspector<I> {
+    zero_gas: ZeroGasInspector,
+    inner: I,
+}
+
+#[cfg(feature = "zero-gas")]
+impl<I> CombinedZeroGasInspector<I> {
+    pub fn new(inner: I) -> Self {
+        Self {
+            zero_gas: ZeroGasInspector::default(),
+            inner,
+        }
+    }
+}
+
+#[cfg(feature = "zero-gas")]
+impl<CTX, I> Inspector<CTX> for CombinedZeroGasInspector<I>
+where 
+    CTX: ContextTr,
+    I: Inspector<CTX>,
+{
+    fn call(
+        &mut self,
+        context: &mut CTX,
+        inputs: &mut CallInputs,
+    ) -> Option<CallOutcome> {
+        // First check zero gas price restriction
+        if let Some(outcome) = self.zero_gas.call(context, inputs) {
+            return Some(outcome);
+        }
+        
+        // Then delegate to inner inspector
+        self.inner.call(context, inputs)
+    }
+
+    fn create(
+        &mut self,
+        context: &mut CTX,
+        inputs: &mut CreateInputs,
+    ) -> Option<CreateOutcome> {
+        // First check zero gas price restriction
+        if let Some(outcome) = self.zero_gas.create(context, inputs) {
+            return Some(outcome);
+        }
+        
+        // Then delegate to inner inspector
+        self.inner.create(context, inputs)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

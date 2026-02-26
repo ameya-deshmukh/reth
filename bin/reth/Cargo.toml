@@ -40,6 +40,7 @@ reth-node-api.workspace = true
 reth-node-core.workspace = true
 reth-ethereum-payload-builder.workspace = true
 reth-ethereum-primitives.workspace = true
+reth-evm-ethereum.workspace = true
 reth-node-ethereum = { workspace = true, features = ["js-tracer"] }
 reth-node-builder.workspace = true
 reth-node-metrics.workspace = true
@@ -125,6 +126,13 @@ min-debug-logs = [
 min-trace-logs = [
     "tracing/release_max_level_trace",
     "reth-ethereum-cli/min-trace-logs",
+]
+
+zero-gas = [
+    "reth-transaction-pool/zero-gas",
+    "reth-node-ethereum/zero-gas",
+    "reth-chainspec/zero-gas",
+    "reth-evm-ethereum/zero-gas"
 ]
 
 [[bin]]

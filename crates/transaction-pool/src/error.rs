@@ -273,6 +273,9 @@ pub enum InvalidPoolTransactionError {
         /// Minimum required priority fee.
         minimum_priority_fee: u128,
     },
+    /// Value transfers are not allowed in zero-gas mode  
+    #[error("value transfers not allowed in zero-gas mode")]
+    ValueTransferInZeroGas,
 }
 
 // === impl InvalidPoolTransactionError ===
@@ -388,6 +391,8 @@ impl InvalidPoolTransactionError {
                 Eip7702PoolTransactionError::AuthorityReserved => false,
             },
             Self::PriorityFeeBelowMinimum { .. } => false,
+            Self::ValueTransferInZeroGas => true, /* bad transaction since it's not valid in
+                                                   * zero-gas mode */
         }
     }
 
